@@ -482,6 +482,54 @@ router.delete<{ id: string }>(
   }
 );
 
+router.post<{ id: string }>(
+  '/:id/logout',
+  isAuthenticated(Permission.MANAGE_USERS),
+  async (req, res, next) => {
+    try {
+      const userRepository = getRepository(User);
+
+      const user = await userRepository.findOne({
+        where: { id: Number(req.params.id) },
+      });
+
+      if (!user) {
+        return next({ status: 404, message: 'User not found.' });
+      }
+
+      if (user.hasPermission(Permission.ADMIN) && req.user?.id !== 1) {
+        return next({
+          status: 405,
+          message: 'You cannot sign out users with administrative privileges.',
+        });
+      }
+
+      const userPushSubRepository = getRepository(UserPushSubscription);
+      const userPushSubs = await userPushSubRepository.find({
+        relations: { user: true },
+        where: { user: { id: user.id } },
+      });
+      await userPushSubRepository.remove(userPushSubs);
+
+      logger.info('Signed out user from all devices', {
+        label: 'API',
+        userId: user.id,
+      });
+      return res.status(200).json({ status: 'ok' });
+    } catch (e) {
+      logger.error('Something went wrong signing out a user', {
+        label: 'API',
+        userId: req.params.id,
+        errorMessage: e.message,
+      });
+      return next({
+        status: 500,
+        message: 'Something went wrong signing out the user',
+      });
+    }
+  }
+);
+
 router.post(
   '/import-from-plex',
   isAuthenticated(Permission.MANAGE_USERS),
