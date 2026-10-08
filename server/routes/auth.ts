@@ -312,14 +312,29 @@ authRoutes.post('/local', async (req, res, next) => {
 });
 
 authRoutes.post('/logout', (req, res, next) => {
-  req.session?.destroy((err) => {
+  const userId = req.user?.id;
+
+  if (!req.session) {
+    res.clearCookie('connect.sid');
+    return res.status(200).json({ status: 'ok' });
+  }
+
+  req.session.destroy((err) => {
     if (err) {
+      logger.error('Unable to end user session', {
+        label: 'API',
+        errorMessage: err.message,
+        ip: req.ip,
+        userId,
+      });
       return next({
         status: 500,
         message: 'Something went wrong.',
       });
     }
 
+    res.clearCookie('connect.sid');
+    logger.debug('User signed out', { label: 'API', ip: req.ip, userId });
     return res.status(200).json({ status: 'ok' });
   });
 });
