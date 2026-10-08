@@ -27,6 +27,12 @@ export const checkUser: Middleware = async (req, _res, next) => {
     user = await userRepository.findOne({
       where: { id: req.session.userId },
     });
+  } else if (req.header('X-Plex-Token')) {
+    const userRepository = getRepository(User);
+
+    user = await userRepository.findOne({
+      where: { plexToken: req.header('X-Plex-Token') },
+    });
   }
 
   if (user) {
