@@ -1,6 +1,7 @@
 import PlexTvAPI from '@server/api/plextv';
 import { UserType } from '@server/constants/user';
 import { getRepository } from '@server/datasource';
+import { Session } from '@server/entity/Session';
 import { User } from '@server/entity/User';
 import { Permission } from '@server/lib/permissions';
 import { getSettings } from '@server/lib/settings';
@@ -311,7 +312,44 @@ authRoutes.post('/local', async (req, res, next) => {
   }
 });
 
-authRoutes.post('/logout', (req, res, next) => {
+const removeUserSessions = async (userId: number): Promise<void> => {
+  const sessionRepository = getRepository(Session);
+  const sessions = await sessionRepository.find();
+
+  const userSessions = sessions.filter((session) => {
+    try {
+      const data = JSON.parse(session.json) as { userId?: number };
+      return data.userId === userId;
+    } catch {
+      return false;
+    }
+  });
+
+  if (userSessions.length > 0) {
+    await sessionRepository.remove(userSessions);
+  }
+};
+
+authRoutes.post('/logout', async (req, res, next) => {
+  const userId = req.session?.userId;
+
+  if (userId) {
+    try {
+      await removeUserSessions(userId);
+    } catch (e) {
+      logger.error('Something went wrong removing user sessions', {
+        label: 'API',
+        errorMessage: e.message,
+        ip: req.ip,
+        userId,
+      });
+      return next({
+        status: 500,
+        message: 'Something went wrong.',
+      });
+    }
+  }
+
   req.session?.destroy((err) => {
     if (err) {
       return next({
