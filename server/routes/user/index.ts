@@ -5,6 +5,7 @@ import { UserType } from '@server/constants/user';
 import { getRepository } from '@server/datasource';
 import Media from '@server/entity/Media';
 import { MediaRequest } from '@server/entity/MediaRequest';
+import { Session } from '@server/entity/Session';
 import { User } from '@server/entity/User';
 import { UserPushSubscription } from '@server/entity/UserPushSubscription';
 import type { WatchlistResponse } from '@server/interfaces/api/discoverInterfaces';
@@ -510,6 +511,17 @@ router.post<{ id: string }>(
         where: { user: { id: user.id } },
       });
       await userPushSubRepository.remove(userPushSubs);
+
+      const sessionRepository = getRepository(Session);
+      const sessions = await sessionRepository.find();
+      const userSessions = sessions.filter((session) => {
+        try {
+          return JSON.parse(session.json).userId === user.id;
+        } catch {
+          return false;
+        }
+      });
+      await sessionRepository.remove(userSessions);
 
       logger.info('Signed out user from all devices', {
         label: 'API',
