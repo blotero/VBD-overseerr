@@ -1,3 +1,4 @@
+import PlexTvAPI from '@server/api/plextv';
 import { getRepository } from '@server/datasource';
 import { User } from '@server/entity/User';
 import type {
@@ -28,11 +29,24 @@ export const checkUser: Middleware = async (req, _res, next) => {
       where: { id: req.session.userId },
     });
   } else if (req.header('X-Plex-Token')) {
+    const plexToken = req.header('X-Plex-Token') ?? '';
     const userRepository = getRepository(User);
 
     user = await userRepository.findOne({
-      where: { plexToken: req.header('X-Plex-Token') },
+      where: { plexToken },
     });
+
+    if (user) {
+      try {
+        const account = await new PlexTvAPI(plexToken).getUser();
+
+        if (account.id !== user.plexId) {
+          user = null;
+        }
+      } catch {
+        user = null;
+      }
+    }
   }
 
   if (user) {
