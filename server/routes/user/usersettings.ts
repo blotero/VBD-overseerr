@@ -1,4 +1,5 @@
 import { getRepository } from '@server/datasource';
+import { Session } from '@server/entity/Session';
 import { User } from '@server/entity/User';
 import { UserSettings } from '@server/entity/UserSettings';
 import type {
@@ -419,6 +420,38 @@ userSettingsRoutes.post<
       await userRepository.save(user);
 
       return res.status(200).json({ permissions: user.permissions });
+    } catch (e) {
+      next({ status: 500, message: e.message });
+    }
+  }
+);
+
+userSettingsRoutes.post<{ id: string }>(
+  '/logout',
+  isOwnProfileOrAdmin(),
+  async (req, res, next) => {
+    const sessionRepository = getRepository(Session);
+
+    try {
+      const sessions = await sessionRepository.find();
+      const userSessions = sessions.filter((session) => {
+        try {
+          return JSON.parse(session.json).userId === req.params.id;
+        } catch {
+          return false;
+        }
+      });
+
+      await sessionRepository.remove(userSessions);
+
+      logger.info('Signed out user sessions', {
+        label: 'API',
+        ip: req.ip,
+        userId: req.params.id,
+        sessionCount: userSessions.length,
+      });
+
+      return res.status(200).json({ status: 'ok' });
     } catch (e) {
       next({ status: 500, message: e.message });
     }
