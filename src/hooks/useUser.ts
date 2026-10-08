@@ -2,6 +2,7 @@ import { UserType } from '@server/constants/user';
 import type { PermissionCheckOptions } from '@server/lib/permissions';
 import { hasPermission, Permission } from '@server/lib/permissions';
 import type { NotificationAgentKey } from '@server/lib/settings';
+import axios from 'axios';
 import type { MutatorCallback } from 'swr';
 import useSWR from 'swr';
 
@@ -47,6 +48,7 @@ interface UserHookResponse {
     permission: Permission | Permission[],
     options?: PermissionCheckOptions
   ) => boolean;
+  logout: () => Promise<void>;
 }
 
 export const useUser = ({
@@ -71,11 +73,18 @@ export const useUser = ({
     return hasPermission(permission, data?.permissions ?? 0, options);
   };
 
+  const logout = async (): Promise<void> => {
+    axios.post('/api/v1/auth/logout').catch(() => undefined);
+
+    await revalidate(undefined, false);
+  };
+
   return {
     user: data,
     loading: !data && !error,
     error,
     hasPermission: checkPermission,
     revalidate,
+    logout,
   };
 };
