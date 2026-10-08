@@ -74,9 +74,11 @@ export const useUser = ({
   };
 
   const logout = async (): Promise<void> => {
-    axios.post('/api/v1/auth/logout').catch(() => undefined);
+    const response = await axios.post('/api/v1/auth/logout');
 
-    await revalidate(undefined, false);
+    if (response.data?.status === 'ok') {
+      await revalidate();
+    }
   };
 
   return {
