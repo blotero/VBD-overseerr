@@ -1,12 +1,14 @@
 import PlexTvAPI from '@server/api/plextv';
 import { UserType } from '@server/constants/user';
 import { getRepository } from '@server/datasource';
+import { Session } from '@server/entity/Session';
 import { User } from '@server/entity/User';
 import { Permission } from '@server/lib/permissions';
 import { getSettings } from '@server/lib/settings';
 import logger from '@server/logger';
 import { isAuthenticated } from '@server/middleware/auth';
 import { Router } from 'express';
+import { In } from 'typeorm';
 
 const authRoutes = Router();
 
@@ -322,6 +324,49 @@ authRoutes.post('/logout', (req, res, next) => {
 
     return res.status(200).json({ status: 'ok' });
   });
+});
+
+authRoutes.post('/logout/all', isAuthenticated(), async (req, res, next) => {
+  const sessionRepository = getRepository(Session);
+
+  try {
+    const sessions = await sessionRepository.find({
+      select: { id: true, json: true },
+    });
+
+    const userSessionIds = sessions
+      .filter((session) => {
+        try {
+          return JSON.parse(session.json).userId === req.user?.id;
+        } catch {
+          return false;
+        }
+      })
+      .map((session) => session.id);
+
+    if (userSessionIds.length > 0) {
+      await sessionRepository.delete({ id: In(userSessionIds) });
+    }
+
+    logger.info('Signed out of all sessions', {
+      label: 'API',
+      ip: req.ip,
+      userId: req.user?.id,
+      sessionCount: userSessionIds.length,
+    });
+
+    return res.status(200).json({ status: 'ok' });
+  } catch (e) {
+    logger.error('Something went wrong signing out of all sessions', {
+      label: 'API',
+      errorMessage: e.message,
+      userId: req.user?.id,
+    });
+    return next({
+      status: 500,
+      message: 'Something went wrong.',
+    });
+  }
 });
 
 authRoutes.post('/reset-password', async (req, res, next) => {
