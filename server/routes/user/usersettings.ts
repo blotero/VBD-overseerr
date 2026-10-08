@@ -436,7 +436,7 @@ userSettingsRoutes.post<{ id: string }>(
       const sessions = await sessionRepository.find();
       const userSessions = sessions.filter((session) => {
         try {
-          return JSON.parse(session.json).userId === req.params.id;
+          return JSON.parse(session.json).userId === Number(req.params.id);
         } catch {
           return false;
         }
