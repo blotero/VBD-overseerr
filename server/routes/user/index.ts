@@ -5,6 +5,7 @@ import { UserType } from '@server/constants/user';
 import { getRepository } from '@server/datasource';
 import Media from '@server/entity/Media';
 import { MediaRequest } from '@server/entity/MediaRequest';
+import { Session } from '@server/entity/Session';
 import { User } from '@server/entity/User';
 import { UserPushSubscription } from '@server/entity/UserPushSubscription';
 import type { WatchlistResponse } from '@server/interfaces/api/discoverInterfaces';
@@ -467,6 +468,22 @@ router.delete<{ id: string }>(
       });
 
       await userRepository.delete(user.id);
+
+      getRepository(Session)
+        .createQueryBuilder()
+        .delete()
+        .where('json LIKE :userSession', {
+          userSession: `%"userId":${user.id}}`,
+        })
+        .execute()
+        .catch((e) => {
+          logger.warn('Unable to clear sessions for deleted user', {
+            label: 'API',
+            userId: user.id,
+            errorMessage: e.message,
+          });
+        });
+
       return res.status(200).json(user.filter());
     } catch (e) {
       logger.error('Something went wrong deleting a user', {
