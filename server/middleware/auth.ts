@@ -40,6 +40,23 @@ export const checkUser: Middleware = async (req, _res, next) => {
   next();
 };
 
+export const endSession: Middleware = (req, _res, next) => {
+  if (!req.session) {
+    return next();
+  }
+
+  req.session.destroy((err) => {
+    if (err) {
+      return next({
+        status: 500,
+        message: 'Something went wrong.',
+      });
+    }
+
+    next();
+  });
+};
+
 export const isAuthenticated = (
   permissions?: Permission | Permission[],
   options?: PermissionCheckOptions

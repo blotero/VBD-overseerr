@@ -11,7 +11,11 @@ import type { StatusResponse } from '@server/interfaces/api/settingsInterfaces';
 import { Permission } from '@server/lib/permissions';
 import { getSettings } from '@server/lib/settings';
 import logger from '@server/logger';
-import { checkUser, isAuthenticated } from '@server/middleware/auth';
+import {
+  checkUser,
+  endSession,
+  isAuthenticated,
+} from '@server/middleware/auth';
 import { mapWatchProviderDetails } from '@server/models/common';
 import { mapProductionCompany } from '@server/models/Movie';
 import { mapNetwork } from '@server/models/Tv';
@@ -150,6 +154,7 @@ router.use('/collection', isAuthenticated(), collectionRoutes);
 router.use('/service', isAuthenticated(), serviceRoutes);
 router.use('/issue', isAuthenticated(), issueRoutes);
 router.use('/issueComment', isAuthenticated(), issueCommentRoutes);
+router.post('/auth/logout', endSession);
 router.use('/auth', authRoutes);
 
 router.get('/regions', isAuthenticated(), async (req, res, next) => {

@@ -311,17 +311,18 @@ authRoutes.post('/local', async (req, res, next) => {
   }
 });
 
-authRoutes.post('/logout', (req, res, next) => {
-  req.session?.destroy((err) => {
-    if (err) {
-      return next({
-        status: 500,
-        message: 'Something went wrong.',
-      });
-    }
+authRoutes.post('/logout', (req, res) => {
+  if (req.user) {
+    logger.info('User signed out', {
+      label: 'API',
+      ip: req.ip,
+      email: req.user.email,
+    });
+  }
 
-    return res.status(200).json({ status: 'ok' });
-  });
+  res.clearCookie('connect.sid');
+
+  return res.status(200).json({ status: 'ok' });
 });
 
 authRoutes.post('/reset-password', async (req, res, next) => {
